@@ -1,0 +1,6 @@
+target/
+*.class
+.mvn/wrapper/maven-wrapper.jar
+before.txt
+after.txt
+ai_improve_log.txt
