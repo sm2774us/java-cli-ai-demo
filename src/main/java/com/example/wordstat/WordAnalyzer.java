@@ -4,7 +4,11 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * wordstat: a word-frequency CLI tool.
@@ -42,22 +46,9 @@ public final class WordAnalyzer {
    */
   public static List<String> tokenize(String text) {
     List<String> words = new ArrayList<>();
-    StringBuilder current = new StringBuilder();
-    for (int i = 0; i < text.length(); i++) {
-      char ch = text.charAt(i);
-      if (Character.isLetter(ch)) {
-        // Sub-optimal: builds the token one character at a time instead of a
-        // single regex pass over the whole text.
-        current.append(Character.toLowerCase(ch));
-      } else {
-        if (current.length() > 0) {
-          words.add(current.toString());
-          current.setLength(0);
-        }
-      }
-    }
-    if (current.length() > 0) {
-      words.add(current.toString());
+    Matcher matcher = Pattern.compile("[a-z]+").matcher(text.toLowerCase());
+    while (matcher.find()) {
+      words.add(matcher.group());
     }
     return words;
   }
@@ -69,19 +60,13 @@ public final class WordAnalyzer {
    * @return pairs of (word, count), order of first appearance
    */
   public static List<WordCount> countWords(List<String> words) {
-    List<WordCount> counts = new ArrayList<>();
+    Map<String, Integer> map = new LinkedHashMap<>();
     for (String word : words) {
-      boolean found = false;
-      for (int i = 0; i < counts.size(); i++) {
-        if (counts.get(i).word().equals(word)) {
-          counts.set(i, new WordCount(word, counts.get(i).count() + 1));
-          found = true;
-          break;
-        }
-      }
-      if (!found) {
-        counts.add(new WordCount(word, 1));
-      }
+      map.put(word, map.getOrDefault(word, 0) + 1);
+    }
+    List<WordCount> counts = new ArrayList<>();
+    for (Map.Entry<String, Integer> entry : map.entrySet()) {
+      counts.add(new WordCount(entry.getKey(), entry.getValue()));
     }
     return counts;
   }
@@ -94,19 +79,10 @@ public final class WordAnalyzer {
    * @return up to n entries sorted by count descending
    */
   public static List<WordCount> topWords(List<WordCount> counts, int n) {
-    List<WordCount> remaining = new ArrayList<>(counts);
-    List<WordCount> result = new ArrayList<>();
-    int take = Math.min(n, remaining.size());
-    for (int i = 0; i < take; i++) {
-      int bestIndex = 0;
-      for (int j = 1; j < remaining.size(); j++) {
-        if (remaining.get(j).count() > remaining.get(bestIndex).count()) {
-          bestIndex = j;
-        }
-      }
-      result.add(remaining.remove(bestIndex));
-    }
-    return result;
+    return counts.stream()
+        .sorted((a, b) -> Integer.compare(b.count(), a.count()))
+        .limit(n)
+        .toList();
   }
 
   /**
